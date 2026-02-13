@@ -1,0 +1,38 @@
+From e403cffff1a46ab1a95d3bc72e92634445d68328 Mon Sep 17 00:00:00 2001
+From: "justinstitt@google.com" <justinstitt@google.com>
+Date: Wed, 6 Dec 2023 23:16:12 +0000
+Subject: net: Convert some ethtool_sprintf() to ethtool_puts()
+
+This patch converts some basic cases of ethtool_sprintf() to
+ethtool_puts().
+
+The conversions are used in cases where ethtool_sprintf() was being used
+with just two arguments:
+|       ethtool_sprintf(&data, buffer[i].name);
+or when it's used with format string: "%s"
+|       ethtool_sprintf(&data, "%s", buffer[i].name);
+which both now become:
+|       ethtool_puts(&data, buffer[i].name);
+
+Signed-off-by: Justin Stitt <justinstitt@google.com>
+Reviewed-by: Wei Fang <wei.fang@nxp.com>
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
+Reviewed-by: Louis Peens <louis.peens@corigine.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/dsa/lantiq_gswip.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+(limited to 'drivers/net/dsa/lantiq_gswip.c')
+
+--- a/drivers/net/dsa/lantiq_gswip.c
++++ b/drivers/net/dsa/lantiq_gswip.c
+@@ -1761,7 +1761,7 @@ static void gswip_get_strings(struct dsa
+ 		return;
+ 
+ 	for (i = 0; i < ARRAY_SIZE(gswip_rmon_cnt); i++)
+-		ethtool_sprintf(&data, "%s", gswip_rmon_cnt[i].name);
++		ethtool_puts(&data, gswip_rmon_cnt[i].name);
+ }
+ 
+ static u32 gswip_bcm_ram_entry_read(struct gswip_priv *priv, u32 table,

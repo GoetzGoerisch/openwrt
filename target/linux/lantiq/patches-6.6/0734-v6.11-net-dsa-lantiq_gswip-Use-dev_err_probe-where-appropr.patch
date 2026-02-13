@@ -21,7 +21,7 @@ Signed-off-by: Jakub Kicinski <kuba@kernel.org>
 
 --- a/drivers/net/dsa/lantiq_gswip.c
 +++ b/drivers/net/dsa/lantiq_gswip.c
-@@ -1922,11 +1922,9 @@ static int gswip_gphy_fw_load(struct gsw
+@@ -1934,11 +1934,9 @@ static int gswip_gphy_fw_load(struct gsw
  	msleep(200);
  
  	ret = request_firmware(&fw, gphy_fw->fw_name, dev);
@@ -36,7 +36,7 @@ Signed-off-by: Jakub Kicinski <kuba@kernel.org>
  
  	/* GPHY cores need the firmware code in a persistent and contiguous
  	 * memory area with a 16 kB boundary aligned start address.
-@@ -1939,9 +1937,9 @@ static int gswip_gphy_fw_load(struct gsw
+@@ -1951,9 +1949,9 @@ static int gswip_gphy_fw_load(struct gsw
  		dev_addr = ALIGN(dma_addr, XRX200_GPHY_FW_ALIGN);
  		memcpy(fw_addr, fw->data, fw->size);
  	} else {
@@ -48,7 +48,7 @@ Signed-off-by: Jakub Kicinski <kuba@kernel.org>
  	}
  
  	release_firmware(fw);
-@@ -1968,8 +1966,8 @@ static int gswip_gphy_fw_probe(struct gs
+@@ -1980,8 +1978,8 @@ static int gswip_gphy_fw_probe(struct gs
  
  	gphy_fw->clk_gate = devm_clk_get(dev, gphyname);
  	if (IS_ERR(gphy_fw->clk_gate)) {
@@ -59,7 +59,7 @@ Signed-off-by: Jakub Kicinski <kuba@kernel.org>
  	}
  
  	ret = of_property_read_u32(gphy_fw_np, "reg", &gphy_fw->fw_addr_offset);
-@@ -1989,8 +1987,8 @@ static int gswip_gphy_fw_probe(struct gs
+@@ -2001,8 +1999,8 @@ static int gswip_gphy_fw_probe(struct gs
  		gphy_fw->fw_name = priv->gphy_fw_name_cfg->ge_firmware_name;
  		break;
  	default:
@@ -70,7 +70,7 @@ Signed-off-by: Jakub Kicinski <kuba@kernel.org>
  	}
  
  	gphy_fw->reset = of_reset_control_array_get_exclusive(gphy_fw_np);
-@@ -2041,8 +2039,9 @@ static int gswip_gphy_fw_list(struct gsw
+@@ -2053,8 +2051,9 @@ static int gswip_gphy_fw_list(struct gsw
  			priv->gphy_fw_name_cfg = &xrx200a2x_gphy_data;
  			break;
  		default:
@@ -82,7 +82,7 @@ Signed-off-by: Jakub Kicinski <kuba@kernel.org>
  		}
  	}
  
-@@ -2050,10 +2049,9 @@ static int gswip_gphy_fw_list(struct gsw
+@@ -2062,10 +2061,9 @@ static int gswip_gphy_fw_list(struct gsw
  	if (match && match->data)
  		priv->gphy_fw_name_cfg = match->data;
  
@@ -96,7 +96,7 @@ Signed-off-by: Jakub Kicinski <kuba@kernel.org>
  
  	priv->num_gphy_fw = of_get_available_child_count(gphy_fw_list_np);
  	if (!priv->num_gphy_fw)
-@@ -2153,8 +2151,8 @@ static int gswip_probe(struct platform_d
+@@ -2166,8 +2164,8 @@ static int gswip_probe(struct platform_d
  			return -EINVAL;
  		break;
  	default:
@@ -107,7 +107,7 @@ Signed-off-by: Jakub Kicinski <kuba@kernel.org>
  	}
  
  	/* bring up the mdio bus */
-@@ -2162,10 +2160,9 @@ static int gswip_probe(struct platform_d
+@@ -2175,28 +2173,27 @@ static int gswip_probe(struct platform_d
  	if (gphy_fw_np) {
  		err = gswip_gphy_fw_list(priv, gphy_fw_np, version);
  		of_node_put(gphy_fw_np);
@@ -121,21 +121,18 @@ Signed-off-by: Jakub Kicinski <kuba@kernel.org>
  	}
  
  	/* bring up the mdio bus */
-@@ -2173,20 +2170,20 @@ static int gswip_probe(struct platform_d
- 	if (mdio_np) {
- 		err = gswip_mdio(priv, mdio_np);
- 		if (err) {
--			dev_err(dev, "mdio probe failed\n");
-+			dev_err_probe(dev, err, "mdio probe failed\n");
- 			goto put_mdio_node;
- 		}
+ 	err = gswip_mdio(priv);
+ 	if (err) {
+-		dev_err(dev, "mdio probe failed\n");
++		dev_err_probe(dev, err, "mdio probe failed\n");
+ 		goto gphy_fw_remove;
  	}
  
  	err = dsa_register_switch(priv->ds);
  	if (err) {
 -		dev_err(dev, "dsa switch register failed: %i\n", err);
 +		dev_err_probe(dev, err, "dsa switch registration failed\n");
- 		goto mdio_bus;
+ 		goto gphy_fw_remove;
  	}
  	if (!dsa_is_cpu_port(priv->ds, priv->hw_info->cpu_port)) {
 -		dev_err(dev, "wrong CPU port defined, HW only supports port: %i\n",
