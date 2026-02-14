@@ -1,0 +1,36 @@
+From b653326b43d1cd35d683da0803196afa147cb4d3 Mon Sep 17 00:00:00 2001
+From: Goetz Goerisch <ggoerisch@gmail.com>
+Date: Sat, 14 Feb 2026 08:52:00 +0100
+Subject: [PATCH] Revert "net: mdiobus: release reset_gpio in
+ mdiobus_unregister_device()"
+
+This reverts commit d70b5910ca310fcd7df75b05ba2ae3a620d0dd61.
+
+It broke lan3 and lan4 for Fritz!Box 7490 due to no longer detecting
+ar8035
+
+Signed-of-by: Goetz Goerisch <ggoerisch@gmail.com>
+---
+ drivers/net/phy/mdio_bus.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/drivers/net/phy/mdio_bus.c
++++ b/drivers/net/phy/mdio_bus.c
+@@ -102,7 +102,6 @@ int mdiobus_unregister_device(struct mdi
+ 	if (mdiodev->bus->mdio_map[mdiodev->addr] != mdiodev)
+ 		return -EINVAL;
+ 
+-	gpiod_put(mdiodev->reset_gpio);
+ 	reset_control_put(mdiodev->reset_ctrl);
+ 
+ 	mdiodev->bus->mdio_map[mdiodev->addr] = NULL;
+@@ -780,6 +779,9 @@ error:
+ 		if (!mdiodev)
+ 			continue;
+ 
++		if (mdiodev->reset_gpio)
++			gpiod_put(mdiodev->reset_gpio);
++
+ 		mdiodev->device_remove(mdiodev);
+ 		mdiodev->device_free(mdiodev);
+ 	}
